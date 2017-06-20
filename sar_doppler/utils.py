@@ -311,7 +311,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
         land = np.concatenate((land, landn))
         land_fdg = np.concatenate((land_fdg, land_fdgn))
 
-    module = 'geospaas.processing_sar_doppler'
+    module = 'sar_doppler'
     DS = Dataset.objects.get(dataseturi__uri__contains=dop2correct.fileName)
     #fn = '/mnt/10.11.12.232/sat_downloads_asar/level-0/2010-01/gsar_rvl/' \
     #        + dop2correct.fileName.split('/')[-2]+'.gsar'
