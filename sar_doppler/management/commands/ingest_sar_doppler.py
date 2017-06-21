@@ -8,7 +8,8 @@ from django.core.management.base import BaseCommand
 from geospaas.utils import uris_from_args
 from geospaas.catalog.models import DatasetURI
 from geospaas.catalog.models import Dataset as catalogDataset
-from geospaas.processing_sar_doppler.models import Dataset
+
+from sar_doppler.models import Dataset
 
 class Command(BaseCommand):
     args = '<filename>'
