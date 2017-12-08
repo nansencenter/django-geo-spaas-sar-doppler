@@ -10,6 +10,9 @@ from geospaas.catalog.models import DatasetURI
 from geospaas.catalog.models import Dataset as catalogDataset
 
 from sar_doppler.models import Dataset
+from sar_doppler.errors import AlreadyExists
+import os
+
 
 class Command(BaseCommand):
     args = '<filename>'
@@ -17,22 +20,31 @@ class Command(BaseCommand):
             'display in Leaflet'
 
     def add_arguments(self, parser):
-        parser.add_argument('--reprocess', action='store_true', 
+        parser.add_argument('img',
+                            nargs='*',
+                            type=str)
+
+        parser.add_argument('--reprocess', action='store_true',
                 help='Force reprocessing')
 
     def handle(self, *args, **options):
         #if not len(args)==1:
         #    raise IOError('Please provide one filename only')
 
-        for non_ingested_uri in uris_from_args(*args):
-            self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
-            ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
-            if not type(ds)==catalogDataset:
-                self.stdout.write('Not found: %s\n' % non_ingested_uri)
-            elif cr:
-                self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
-            else:
-                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+        for non_ingested_uri in options['img']:
+            try:
+                self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
+                non_ingested_uri = 'file://localhost' + non_ingested_uri
+                ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
 
+                if not type(ds) == catalogDataset:
+                    self.stdout.write('Not found: %s\n' % non_ingested_uri)
+                elif cr:
+                    self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
+                else:
+                    self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+
+            except AlreadyExists:
+                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
 
 
