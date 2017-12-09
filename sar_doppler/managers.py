@@ -31,8 +31,9 @@ class DatasetManager(DM):
     def get_or_create(self, uri, reprocess=False, *args, **kwargs):
         # ingest file to db
 
-        if DatasetURI.objects.filter(uri=uri):
-            raise AlreadyExists
+        # this will fail also when we want to reprocess....
+        #if DatasetURI.objects.filter(uri=uri):
+        #    raise AlreadyExists
 
         ds, created = super(DatasetManager, self).get_or_create(uri, *args, **kwargs)
 
