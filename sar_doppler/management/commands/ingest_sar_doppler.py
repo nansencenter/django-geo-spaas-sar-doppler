@@ -44,7 +44,5 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write('Was already added: %s\n' % non_ingested_uri)
 
-            except AlreadyExists:
-                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
 
 
