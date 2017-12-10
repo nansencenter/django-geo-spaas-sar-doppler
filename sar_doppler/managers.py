@@ -155,15 +155,16 @@ class DatasetManager(DM):
             })
 
             # Find matching NCEP forecast wind field
-            wind = Dataset.objects.filter(
-                    source__platform__short_name='NCEP-GFS',
-                    time_coverage_start__range=[
-                        parse(swath_data[i].get_metadata()['time_coverage_start'])
-                        - timedelta(hours=3),
-                        parse(swath_data[i].get_metadata()['time_coverage_start'])
-                        + timedelta(hours=3)
-                    ]
-                )
+            wind = [] # do not do any wind correction now, since we have lookup tables
+            #wind = Dataset.objects.filter(
+            #        source__platform__short_name='NCEP-GFS',
+            #        time_coverage_start__range=[
+            #            parse(swath_data[i].get_metadata()['time_coverage_start'])
+            #            - timedelta(hours=3),
+            #            parse(swath_data[i].get_metadata()['time_coverage_start'])
+            #            + timedelta(hours=3)
+            #        ]
+            #    )
             band_number = swath_data[i]._get_band_number({
                 'standard_name': 'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
                 })
@@ -187,7 +188,7 @@ class DatasetManager(DM):
                     'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_wind_waves'
                 })
 
-                fdg, land_corr = swath_data[i].geophysical_doppler_shift(
+                fdg = swath_data[i].geophysical_doppler_shift(
                     wind=nansat_filename(wind[dates.index(nearest_date)].dataseturi_set.all()[0].uri)
                 )
 
@@ -204,7 +205,7 @@ class DatasetManager(DM):
                     })
             else:
                 fww = None
-                fdg, land_corr = swath_data[i].geophysical_doppler_shift()
+                fdg = swath_data[i].geophysical_doppler_shift()
 
             swath_data[i].add_band(
                 array=fdg,
