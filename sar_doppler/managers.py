@@ -19,6 +19,7 @@ from geospaas.viewer.models import Visualization
 from geospaas.viewer.models import VisualizationParameter
 from geospaas.nansat_ingestor.managers import DatasetManager as DM
 
+from nansat.nansat import Nansat
 from nansat.nsr import NSR
 from nansat.domain import Domain
 from nansat.figure import Figure
@@ -45,7 +46,7 @@ class DatasetManager(DM):
         ds.save()
 
         fn = nansat_filename(uri)
-        n = Doppler(fn, subswath=0)
+        n = Nansat(fn, subswath=0)
         gg = WKTReader().read(n.get_border_wkt())
 
         if ds.geographic_location.geometry.area>gg.area and not reprocess:
@@ -75,7 +76,7 @@ class DatasetManager(DM):
 
         for i in range(n_subswaths):
             # Read subswaths 
-            swath_data[i] = Doppler(fn, subswath=i)
+            swath_data[i] = Nansat(fn, subswath=i)
 
             # Should use nansat.domain.get_border - see nansat issue #166
             # (https://github.com/nansencenter/nansat/issues/166)
