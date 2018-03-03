@@ -1,7 +1,7 @@
 ''' Processing of SAR Doppler from Norut's GSAR '''
 from optparse import make_option
 
-from nansat.tools import GeolocationError
+from nansat.exceptions import NansatGeolocationError
 
 from django.core.management.base import BaseCommand
 
@@ -30,7 +30,10 @@ class Command(BaseCommand):
 
         for non_ingested_uri in uris_from_args(options['gsar_files']):
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
-            ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
+            try:
+                ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
+            except NansatGeolocationError:
+                continue
             if not type(ds)==catalogDataset:
                 self.stdout.write('Not found: %s\n' % non_ingested_uri)
             elif cr:
