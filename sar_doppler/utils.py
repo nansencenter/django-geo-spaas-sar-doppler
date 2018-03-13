@@ -498,7 +498,7 @@ def mean_gc_geostrophic(datetime_start=timezone.datetime(2010,1,1,
         #    fn, date='%d-%02d-%02d'%(dt.year, dt.month, dt.day),
         #    bands=['eastward_geostrophic_current_velocity'])
         #n.export(expFn)
-        n = Nansat(expFn, mapperName='generic')
+        n = Nansat(expFn, mapper='generic')
         n.reproject(domain, addmask=False)
         u = n['eastward_geostrophic_current_velocity']
         # OK:
