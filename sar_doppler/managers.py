@@ -24,20 +24,18 @@ from nansat.nsr import NSR
 from nansat.domain import Domain
 from nansat.figure import Figure
 from sardoppler.sardoppler import Doppler
-from sar_doppler.errors import AlreadyExists
-
 
 class DatasetManager(DM):
 
-    def get_or_create(self, uri, reprocess=False, *args, **kwargs):
-        # ingest file to db
+    N_SUBSWATHS = 5
 
-        # this will fail also when we want to reprocess....
-        #if DatasetURI.objects.filter(uri=uri):
-        #    raise AlreadyExists
+    def get_or_create(self, uri, *args, **kwargs):
+        """ Ingest gsar file to geo-spaas db
+        """
 
         ds, created = super(DatasetManager, self).get_or_create(uri, *args, **kwargs)
 
+        # TODO: Check if the following is necessary
         if not type(ds) == Dataset:
             return ds, False
 
@@ -49,7 +47,7 @@ class DatasetManager(DM):
         n = Nansat(fn, subswath=0)
         gg = WKTReader().read(n.get_border_wkt())
 
-        if ds.geographic_location.geometry.area>gg.area and not reprocess:
+        if ds.geographic_location.geometry.area>gg.area:
             return ds, False
 
         # Update dataset border geometry
@@ -57,7 +55,6 @@ class DatasetManager(DM):
         # consuming but apparently the only way to do it. Could be checked
         # though...
 
-        n_subswaths = 5
         swath_data = {}
         lon = {}
         lat = {}
@@ -74,7 +71,7 @@ class DatasetManager(DM):
         num_border_points = 10
         border = 'POLYGON(('
 
-        for i in range(n_subswaths):
+        for i in range(self.N_SUBSWATHS):
             # Read subswaths 
             swath_data[i] = Nansat(fn, subswath=i)
 
@@ -106,7 +103,7 @@ class DatasetManager(DM):
 
         # apply 180 degree correction to longitude - code copied from
         # get_border_wkt...
-
+        # TODO: simplify using np.mod?
         for ilon, llo in enumerate(lons):
             lons[ilon] = copysign(acos(cos(llo * pi / 180.)) / pi * 180,
                                   sin(llo * pi / 180.))
@@ -134,191 +131,173 @@ class DatasetManager(DM):
         
         return ds, created
 
+    def process(self, uri, *args, **kwargs):
+        """ Create data products
         """
-        NOTE: this get_or_create should only add the gsar rvl files to the geo-spaas catalog.
-        Another method/function/script should be made for processing into nc-files, and yet another
-        one to ingest the nc-files
-        """
-        ## Create data products
-        #mm = self.__module__.split('.')
-        #module = '%s.%s' % (mm[0], mm[1])
-        #mp = media_path(module, swath_data[i].fileName)
-        #ppath = product_path(module, swath_data[i].fileName)
+        ds, created = self.get_or_create(uri, *args, **kwargs)
+        fn = nansat_filename(uri)
+        swath_data = {}
+        # Read subswaths 
+        for i in range(self.N_SUBSWATHS):
+            swath_data[i] = Doppler(fn, subswath=i)
 
-        #for i in range(n_subswaths):
-        #    is_corrupted = False
-        #    # Check if the file is corrupted
-        #    try:
-        #        inci = swath_data[i]['incidence_angle']
-        #    #  TODO: What kind of exception ?
-        #    except:
-        #        is_corrupted = True
-        #        continue
+        # Get module name
+        mm = self.__module__.split('.')
+        module = '%s.%s' % (mm[0], mm[1])
+        # Set media path (where images will be stored)
+        mp = media_path(module, swath_data[i].filename)
+        # Set product path (where netcdf products will be stored)
+        ppath = product_path(module, swath_data[i].filename)
 
-        #    # Add Doppler anomaly
-        #    swath_data[i].add_band(array=swath_data[i].anomaly(), parameters={
-        #        'wkv':
-        #        'anomaly_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave'
-        #    })
+        # Loop subswaths, process each of them and create figures for display with leaflet
+        for i in range(self.N_SUBSWATHS):
+            is_corrupted = False
+            # Check if the file is corrupted
+            try:
+                inci = swath_data[i]['incidence_angle']
+            #  TODO: What kind of exception ?
+            except:
+                is_corrupted = True
+                continue
 
-        #    # Find matching NCEP forecast wind field
-        #    wind = [] # do not do any wind correction now, since we have lookup tables
-        #    #wind = Dataset.objects.filter(
-        #    #        source__platform__short_name='NCEP-GFS',
-        #    #        time_coverage_start__range=[
-        #    #            parse(swath_data[i].get_metadata()['time_coverage_start'])
-        #    #            - timedelta(hours=3),
-        #    #            parse(swath_data[i].get_metadata()['time_coverage_start'])
-        #    #            + timedelta(hours=3)
-        #    #        ]
-        #    #    )
-        #    band_number = swath_data[i]._get_band_number({
-        #        'standard_name': 'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
-        #        })
+            # Add Doppler anomaly
+            swath_data[i].add_band(array=swath_data[i].anomaly(), parameters={
+                'wkv':
+                'anomaly_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave'
+            })
 
-        #    pol = swath_data[i].get_metadata(bandID=band_number, key='polarization')
+            # Get band number of DC freq, then DC polarisation
+            band_number = swath_data[i]._get_band_number({
+                'standard_name': 'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
+                })
+            pol = swath_data[i].get_metadata(bandID=band_number, key='polarization')
 
-        #    if wind:
-        #        dates = [w.time_coverage_start for w in wind]
+            # Calculate total geophysical Doppler shift
+            fdg = swath_data[i].geophysical_doppler_shift()
+            swath_data[i].add_band(
+                array=fdg,
+                parameters={
+                    'wkv': 'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_surface_velocity'
+                })
 
-        #        # TODO: Come back later (!!!)
-        #        nearest_date = min(dates, key=lambda d:
-        #                abs(d-parse(swath_data[i].get_metadata()['time_coverage_start']).replace(tzinfo=timezone.utc)))
+            # Set filename of exported netcdf
+            fn = os.path.join(ppath,
+                              os.path.basename(swath_data[i].filename).split('.')[0]
+                              + 'subswath%d.nc' % i)
+            # Set filename of original gsar file in metadata
+            swath_data[i].set_metadata(key='Originating file',
+                                        value=swath_data[i].filename)
+            # Export data to netcdf
+            print('Exporting %s (subswath %d)' % (swath_data[i].filename, i))
+            swath_data[i].export(filename=fn)
 
-        #        fww = swath_data[i].wind_waves_doppler(
-        #                nansat_filename(wind[dates.index(nearest_date)].dataseturi_set.all()[0].uri),
-        #                pol
-        #            )
+            # Add netcdf uri to DatasetURIs
+            ncuri = os.path.join('file://localhost', fn)
+            new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
+                                                                dataset=ds)
 
-        #        swath_data[i].add_band(array=fww, parameters={
-        #            'wkv':
-        #            'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_wind_waves'
-        #        })
+            # Reproject to leaflet projection
+            xlon, xlat = swath_data[i].get_corners()
+            d = Domain(NSR(3857),
+                       '-lle %f %f %f %f -tr 1000 1000'
+                       % (xlon.min(), xlat.min(), xlon.max(), xlat.max()))
+            swath_data[i].reproject(d, eResampleAlg=1, tps=True)
 
-        #        fdg = swath_data[i].geophysical_doppler_shift(
-        #            wind=nansat_filename(wind[dates.index(nearest_date)].dataseturi_set.all()[0].uri)
-        #        )
+            # Check if the reprojection failed
+            try:
+                inci = swath_data[i]['incidence_angle']
+            except:
+                is_corrupted = True
+                warnings.warn('Could not read incidence angles - reprojection failed')
+                continue
 
-        #        # Estimate current by subtracting wind-waves Doppler
-        #        theta = swath_data[i]['incidence_angle'] * np.pi / 180.
-        #        vcurrent = -np.pi * (fdg - fww) / (112. * np.sin(theta))
+            # Create visualizations of the following bands (short_names)
+            ingest_creates = ['valid_doppler',
+                              'valid_land_doppler',
+                              'valid_sea_doppler',
+                              'dca',
+                              'fdg']
+            for band in ingest_creates:
+                filename = '%s_subswath_%d.png' % (band, i)
+                # check uniqueness of parameter
+                param = Parameter.objects.get(short_name=band)
+                fig = swath_data[i].write_figure(
+                    os.path.join(mp, filename),
+                    bands=band,
+                    mask_array=swath_data[i]['swathmask'],
+                    mask_lut={0: [128, 128, 128]},
+                    transparency=[128, 128, 128])
 
-        #        # Smooth...
-        #        # vcurrent = median_filter(vcurrent, size=(3,3))
-        #        swath_data[i].add_band(
-        #            array=vcurrent,
-        #            parameters={
-        #                'wkv': 'surface_radial_doppler_sea_water_velocity'
-        #            })
-        #    else:
-        #        fww = None
-        #        fdg = swath_data[i].geophysical_doppler_shift()
+                if type(fig) == Figure:
+                    print 'Created figure of subswath %d, band %s' % (i, band)
+                else:
+                    warnings.warn('Figure NOT CREATED')
 
-        #    swath_data[i].add_band(
-        #        array=fdg,
-        #        parameters={
-        #            'wkv': 'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_surface_velocity'
-        #        })
+                # Get or create DatasetParameter
+                dsp, created = DatasetParameter.objects.get_or_create(dataset=ds,
+                                                                      parameter=param)
 
-        #    # Export data to netcdf
-        #    print('Exporting %s (subswath %d)' % (swath_data[i].fileName, i))
+                # Create GeographicLocation for the visualization object
+                geom, created = GeographicLocation.objects.get_or_create(
+                        geometry=WKTReader().read(swath_data[i].get_border_wkt()))
 
-        #    fn = os.path.join(ppath,
-        #                      os.path.basename(swath_data[i].fileName).split('.')[0]
-        #                      + 'subswath%d.nc' % i)
+                # Create Visualization
+                vv, created = Visualization.objects.get_or_create(
+                    uri='file://localhost%s/%s' % (mp, filename),
+                    title='%s (swath %d)' % (param.standard_name, i + 1),
+                    geographic_location=geom
+                )
 
-        #    origFile = swath_data[i].fileName
+                # Create VisualizationParameter
+                vp, created = VisualizationParameter.objects.get_or_create(
+                    visualization=vv,
+                    ds_parameter=dsp
+                )
 
-        #    try:
-        #        swath_data[i].set_metadata(key='Originating file',
-        #                                   value=origFile)
-        #    except Exception as e:
-        #        # TODO: Should it be here?
-        #        warnings.warn('%s: BUG IN GDAL(?) - SHOULD BE CHECKED..' % e.message)
+        # TODO: consider merged figures like Jeong-Won has added in the development branch
 
-        #    swath_data[i].export(fileName=fn)
-        #    ncuri = os.path.join('file://localhost', fn)
-        #    new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
-        #                                                        dataset=ds)
+        return ds, not is_corrupted
 
-        #    # Maybe add figures in satellite projection...
-        #    # filename = 'satproj_fdg_subswath_%d.png'%i
-        #    # swath_data[i].write_figure(os.path.join(mp, filename),
-        #    #        bands='fdg', clim=[-60,60], cmapName='jet')
+    #def bayesian_wind(self):
+    #    # Find matching NCEP forecast wind field
+    #    wind = [] # do not do any wind correction now, since we have lookup tables
+    #    wind = Dataset.objects.filter(
+    #            source__platform__short_name='NCEP-GFS',
+    #            time_coverage_start__range=[
+    #                parse(swath_data[i].get_metadata()['time_coverage_start'])
+    #                - timedelta(hours=3),
+    #                parse(swath_data[i].get_metadata()['time_coverage_start'])
+    #                + timedelta(hours=3)
+    #            ]
+    #        )
+    #    if wind:
+    #        dates = [w.time_coverage_start for w in wind]
+    #        # TODO: Come back later (!!!)
+    #        nearest_date = min(dates, key=lambda d:
+    #                abs(d-parse(swath_data[i].get_metadata()['time_coverage_start']).replace(tzinfo=timezone.utc)))
+    #        fww = swath_data[i].wind_waves_doppler(
+    #                nansat_filename(wind[dates.index(nearest_date)].dataseturi_set.all()[0].uri),
+    #                pol
+    #            )
 
-        #    #  Add figure to db
-        #    
-        #    # Reproject to leaflet projection
-        #    xlon, xlat = swath_data[i].get_corners()
-        #    d = Domain(NSR(3857),
-        #               '-lle %f %f %f %f -tr 1000 1000'
-        #               % (xlon.min(), xlat.min(), xlon.max(), xlat.max()))
+    #        swath_data[i].add_band(array=fww, parameters={
+    #            'wkv':
+    #            'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_wind_waves'
+    #        })
 
-        #    swath_data[i].reproject(d, eResampleAlg=1, tps=True)
+    #        fdg = swath_data[i].geophysical_doppler_shift(
+    #            wind=nansat_filename(wind[dates.index(nearest_date)].dataseturi_set.all()[0].uri)
+    #        )
 
-        #    # Check if the reprojection failed
-        #    try:
-        #        inci = swath_data[i]['incidence_angle']
+    #        # Estimate current by subtracting wind-waves Doppler
+    #        theta = swath_data[i]['incidence_angle'] * np.pi / 180.
+    #        vcurrent = -np.pi * (fdg - fww) / (112. * np.sin(theta))
 
-        #    # TODO: What kind of exception?
-        #    except:
-        #        is_corrupted = True
-        #        warnings.warn('Could not read incidence angles - reprojection failed')
-        #        continue
+    #        # Smooth...
+    #        # vcurrent = median_filter(vcurrent, size=(3,3))
+    #        swath_data[i].add_band(
+    #            array=vcurrent,
+    #            parameters={
+    #                'wkv': 'surface_radial_doppler_sea_water_velocity'
+    #            })
 
-        #    # Visualizations of the following bands (short_names) are created
-        #    # when ingesting data:
-        #    ingest_creates = ['valid_doppler',
-        #                      'valid_land_doppler',
-        #                      'valid_sea_doppler',
-        #                      'dca',
-        #                      'fdg']
-        #    if wind:
-        #        ingest_creates.extend(['fww', 'Ur'])
-
-        #    # (the geophysical doppler shift must later be added in a separate
-        #    # manager method in order to estimate the range bias after
-        #    # processing multiple files)
-        #    for band in ingest_creates:
-        #        filename = '%s_subswath_%d.png' % (band, i)
-        #        # check uniqueness of parameter
-        #        param = Parameter.objects.get(short_name=band)
-        #        fig = swath_data[i].write_figure(
-        #            os.path.join(mp, filename),
-        #            bands=band,
-        #            mask_array=swath_data[i]['swathmask'],
-        #            mask_lut={0: [128, 128, 128]},
-        #            transparency=[128, 128, 128])
-
-        #        if type(fig) == Figure:
-        #            print 'Created figure of subswath %d, band %s' % (i, band)
-        #        else:
-        #            warnings.warn('Figure NOT CREATED')
-
-        #        # Get DatasetParameter
-        #        dsp, created = DatasetParameter.objects.get_or_create(dataset=ds,
-        #                                                              parameter=param)
-
-        #        # Create Visualization
-        #        try:
-        #            geom, created = GeographicLocation.objects.get_or_create(
-        #                geometry=WKTReader().read(swath_data[i].get_border_wkt()))
-        #        except Exception as inst:
-        #            print(type(inst))
-        #            import ipdb
-        #            ipdb.set_trace()
-        #            raise
-
-        #        vv, created = Visualization.objects.get_or_create(
-        #            uri='file://localhost%s/%s' % (mp, filename),
-        #            title='%s (swath %d)' % (param.standard_name, i + 1),
-        #            geographic_location=geom
-        #        )
-
-        #        # Create VisualizationParameter
-        #        vp, created = VisualizationParameter.objects.get_or_create(
-        #            visualization=vv,
-        #            ds_parameter=dsp
-        #        )
-
-        #return ds, not is_corrupted
