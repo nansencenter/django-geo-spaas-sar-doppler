@@ -1,4 +1,4 @@
-''' Processing of SAR Doppler from Norut's GSAR '''
+''' Ingestion of Doppler products from Norut's GSAR '''
 from optparse import make_option
 
 from nansat.exceptions import NansatGeolocationError
