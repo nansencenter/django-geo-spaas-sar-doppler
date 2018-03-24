@@ -19,7 +19,10 @@ class Command(BaseCommand):
 
         for i,ds in enumerate(unprocessed):
             uri = ds.dataseturi_set.get(uri__endswith='.gsar').uri
-            updated_ds, corrupted = Dataset.objects.process(uri)
+            try:
+                updated_ds, corrupted = Dataset.objects.process(uri)
+            except IOError: # file manually moved to *.error...
+                continue
             if not corrupted:
                 self.stdout.write('Successfully processed (%d/%d): %s\n' % (i+1, num_unprocessed,
                     uri))
