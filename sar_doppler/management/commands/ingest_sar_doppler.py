@@ -70,11 +70,12 @@ class Command(BaseCommand):
         #if not len(args)==1:
         #    raise IOError('Please provide one filename only')
         print(options)
+        print(options['ts'])
         pass
         for non_ingested_uri in uris_from_args(options['gsar_files']):
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
             ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
-            if not type(ds)==catalogDataset:
+            if not type(ds) == catalogDataset:
                 self.stdout.write('Not found: %s\n' % non_ingested_uri)
             elif cr:
                 self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
@@ -86,3 +87,17 @@ class Command(BaseCommand):
                     self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
                 else:
                     self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+
+    def validate_domain(self, options):
+        # Check Spatial reference options
+        valid_domain, srs = self.check_srs(options)
+
+    def check_srs(self, options):
+        if options['epsg'] is not None and options['proj4'] is not None:
+            raise IOError('Only one Spatial reference system can be used (EPSG or PROJ4')
+        elif options['epsg'] is not None:
+            return True, options['epsg']
+        elif options['proj4'] is not None:
+            return True, options['proj4']
+        else:
+            return False, None
