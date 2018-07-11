@@ -84,6 +84,9 @@ class Command(BaseCommand):
             ds, cr = Dataset.objects.get_or_create(non_ingested_uri, srs, extent, **options)
             if not type(ds) == catalogDataset:
                 self.stdout.write('Not found: %s\n' % non_ingested_uri)
+            elif ds is None:
+                self.stdout.write('Does not intersect with a required domain: %s\n'
+                                  % non_ingested_uri)
             elif cr:
                 self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
             else:
