@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 from django.db import models
-from django.contrib.gis.geos import WKTReader, Polygon
+from django.contrib.gis.geos import WKTReader, Polygon, MultiPolygon
 
 from geospaas.utils import nansat_filename, media_path, product_path
 from geospaas.vocabularies.models import Parameter
@@ -177,3 +177,12 @@ class DatasetManager(DM):
                                         ' '.join([str(i) for i in extent_dict[resolution_param]]))
 
         return extent_str
+
+    @staticmethod
+    def unite_geometry(uri, subswaths_num):
+        n = Nansat(uri, subswath=0)
+        poly_base = n.get_border_geometry()
+        for subswath_num in range(1, subswaths_num):
+            n = Nansat(uri, subswath=subswath_num)
+            poly_base = poly_base.Union(n.get_border_geometry())
+        return poly_base
