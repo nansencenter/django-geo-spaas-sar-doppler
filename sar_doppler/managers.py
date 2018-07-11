@@ -70,11 +70,18 @@ class DatasetManager(DM):
 
         return step, border
 
-    def get_or_create(self, uri, reprocess=False, *args, **kwargs):
+    def get_or_create(self, uri, srs, extent_dict, reprocess=False, *args, **kwargs):
+
         # ingest file to db
         ds, created = super(DatasetManager, self).get_or_create(uri, *args, **kwargs)
         if not type(ds) == Dataset:
             return ds, False
+
+        # Assemble domain
+        if srs and extent_dict:
+            extent_str = DatasetManager.assemble_domain_extent(extent_dict)
+            dom = Domain(srs, extent_str)
+            spec_domain = True
 
         # set Dataset entry_title
         ds.entry_title = 'SAR Doppler'
@@ -118,7 +125,6 @@ class DatasetManager(DM):
             # (https://github.com/nansencenter/nansat/issues/166)
             steps, borders = self.update_borders(swath_data[i], i, steps, borders)
 
-        print(borders)
         lons = self.list_of_coordinates(borders['left'], borders['right'],
                                         borders['upper'], borders['lower'], 'lon')
         # apply 180 degree correction to longitude - code copied from
@@ -158,3 +164,16 @@ class DatasetManager(DM):
 
         # return ds, not_corrupted
         return ds, not_corrupted
+
+    @staticmethod
+    def assemble_domain_extent(extent_dict):
+
+        extent_param = 'lle' if 'lle' in extent_dict.keys() else 'te'
+        resolution_param = 'ts' if 'ts' in extent_dict.keys() else 'tr'
+
+        extent_str = '-%s %s -%s %s' % (extent_param,
+                                        ' '.join([str(i) for i in extent_dict[extent_param]]),
+                                        resolution_param,
+                                        ' '.join([str(i) for i in extent_dict[resolution_param]]))
+
+        return extent_str
