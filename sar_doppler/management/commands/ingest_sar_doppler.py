@@ -35,24 +35,29 @@ class Command(BaseCommand):
                                  ' system. For instance "+proj=utm +zone=11 +datum=WGS84".')
         # Extent options
         parser.add_argument('--tr',
-                            metavar='\'X Y\'',
-                            type=str,
+                            metavar=('X', 'Y'),
+                            nargs=2,
+                            type=float,
                             help='Set target resolution. The values must be expressed in '
                                  'georeferenced units. Both must be positive values')
+
         parser.add_argument('--te',
-                            metavar='\'X_MIN Y_MIN X_MAX Y_MAX\'',
-                            type=str,
+                            metavar=('X_MIN', 'Y_MIN', 'X_MAX', 'Y_MAX'),
+                            nargs=4,
+                            type=float,
                             help='Set georeferenced extents. The values must be expressed '
                                  'in georeferenced units. If not specified, the extent of '
                                  'the output file will be the extent of the vector layers.')
         parser.add_argument('--ts',
-                            metavar='\'WIDTH HEIGHT\'',
-                            type=str,
+                            metavar=('WIDTH', 'HEIGHT'),
+                            nargs=2,
+                            type=int,
                             help='Set output file size in pixels and lines. '
                                  'Note that --ts cannot be used with --tr. size_x size_y')
         parser.add_argument('--lle',
-                            metavar='\'LON_MIN LAT_MIN LON_MAX LAT_MAX\'',
-                            type=str,
+                            metavar=('LON_MIN', 'LAT_MIN', 'LON_MAX', 'LAT_MAX'),
+                            nargs=4,
+                            type=float,
                             help='Set domain boundaries. '
                                  'Note that --lle cannot be used with --te')
 
@@ -65,6 +70,7 @@ class Command(BaseCommand):
         #if not len(args)==1:
         #    raise IOError('Please provide one filename only')
         print(options)
+        pass
         for non_ingested_uri in uris_from_args(options['gsar_files']):
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
             ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
@@ -80,6 +86,3 @@ class Command(BaseCommand):
                     self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
                 else:
                     self.stdout.write('Was already added: %s\n' % non_ingested_uri)
-
-
-
