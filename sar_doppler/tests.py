@@ -11,20 +11,17 @@ class TestIngestCommand(TestCase):
         options_3 = {'epsg': None, 'proj4': 'test proj4 string'}
         options_4 = {'epsg': 4326, 'proj4': 'test proj4 string'}
 
-        valid_srs, srs = IngestCommand.check_srs(options_1)
-        self.assertFalse(valid_srs)
+        srs = IngestCommand.check_srs(options_1)
         self.assertEqual(srs, None)
 
-        valid_srs, srs = IngestCommand.check_srs(options_2)
-        self.assertTrue(valid_srs)
+        srs = IngestCommand.check_srs(options_2)
         self.assertEqual(srs, 4326)
 
-        valid_srs, srs = IngestCommand.check_srs(options_3)
-        self.assertTrue(valid_srs)
+        srs = IngestCommand.check_srs(options_3)
         self.assertEqual(srs, 'test proj4 string')
 
         with self.assertRaises(CommandError) as opt_err:
-            valid_srs, srs = IngestCommand.check_srs(options_4)
+            srs = IngestCommand.check_srs(options_4)
             self.assertEqual(opt_err.message, 'Only one Spatial reference system'
                                               ' can be used (EPSG or PROJ4)')
 
@@ -37,31 +34,54 @@ class TestIngestCommand(TestCase):
         options_4 = {'lle': [1, 2, 3, 4], 'te': [1, 2, 3, 4]}
         options_5 = {'tr': [1, 2], 'ts': [1, 2]}
 
-        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_1, param1, param2)
-        self.assertFalse(valid_ext)
+        extent = IngestCommand.check_extent_pairs(extent, options_1, param1, param2)
         self.assertEqual(extent, None)
 
         extent = {}
-        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_2, param1, param2)
-        self.assertTrue(valid_ext)
+        extent = IngestCommand.check_extent_pairs(extent, options_2, param1, param2)
         self.assertEqual(extent['lle'], [1, 2, 3, 4])
 
         extent = {}
-        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_3, param1, param2)
-        self.assertTrue(valid_ext)
+        extent = IngestCommand.check_extent_pairs(extent, options_3, param1, param2)
         self.assertEqual(extent['te'], [1, 2, 3, 4])
 
         extent = {}
         with self.assertRaises(CommandError) as opt_err:
-            valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_4, param1, param2)
+            extent = IngestCommand.check_extent_pairs(extent, options_4, param1, param2)
             self.assertEqual(opt_err.message, '--lle cannot be used with --te')
 
         extent = {}
         param1, param2 = 'tr', 'ts'
         with self.assertRaises(CommandError) as opt_err:
-            valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_5, param1, param2)
+            extent = IngestCommand.check_extent_pairs(extent, options_5, param1, param2)
             self.assertEqual(opt_err.message, '--tr cannot be used with --ts')
 
+    def test_validate_domain(self):
+
+        options_1 = {'epsg': None, 'proj4': None, 'lle': None, 'te': [1, 2, 3, 4]}
+        with self.assertRaises(CommandError) as opt_err:
+            srs, extent = IngestCommand.validate_domain(options_1)
+            self.assertEqual(opt_err.message, 'Spatial reference was not specified')
+
+        options_2 = {'epsg': 4326, 'proj4': None, 'lle': None, 'te': None}
+        with self.assertRaises(CommandError) as opt_err:
+            srs, extent = IngestCommand.validate_domain(options_2)
+            self.assertEqual(opt_err.message, '--lle or --te was not specified')
+
+        options_3 = {'epsg': None, 'proj4': None, 'lle': None,
+                     'te': [1, 2, 3, 4], 'tr': None, 'ts': None}
+        with self.assertRaises(CommandError) as opt_err:
+            srs, extent = IngestCommand.validate_domain(options_3)
+            self.assertEqual(opt_err.message, '--tr or --ts was not specified')
+
+        options_4 = {'epsg': 4326, 'proj4': None, 'lle': None,
+                     'te': [1, 2, 3, 4], 'tr': None, 'ts': [1, 2]}
+
+        srs, extent = IngestCommand.validate_domain(options_4)
+        self.assertEqual(srs, 4326)
+        self.assertIsInstance(extent, dict)
+        self.assertEqual(extent['te'], [1, 2, 3, 4])
+        self.assertEqual(extent['ts'], [1, 2])
 
 from django.core.management import call_command
 from django.utils.six import StringIO
