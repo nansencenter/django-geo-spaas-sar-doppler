@@ -28,6 +28,39 @@ class TestIngestCommand(TestCase):
             self.assertEqual(opt_err.message, 'Only one Spatial reference system'
                                               ' can be used (EPSG or PROJ4)')
 
+    def test_check_extent_pairs(self):
+        extent = {}
+        param1, param2 = 'lle', 'te'
+        options_1 = {'lle': None, 'te': None}
+        options_2 = {'lle': [1, 2, 3, 4], 'te': None}
+        options_3 = {'lle': None, 'te': [1, 2, 3, 4]}
+        options_4 = {'lle': [1, 2, 3, 4], 'te': [1, 2, 3, 4]}
+        options_5 = {'tr': [1, 2], 'ts': [1, 2]}
+
+        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_1, param1, param2)
+        self.assertFalse(valid_ext)
+        self.assertEqual(extent, None)
+
+        extent = {}
+        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_2, param1, param2)
+        self.assertTrue(valid_ext)
+        self.assertEqual(extent['lle'], [1, 2, 3, 4])
+
+        extent = {}
+        valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_3, param1, param2)
+        self.assertTrue(valid_ext)
+        self.assertEqual(extent['te'], [1, 2, 3, 4])
+
+        extent = {}
+        with self.assertRaises(CommandError) as opt_err:
+            valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_4, param1, param2)
+            self.assertEqual(opt_err.message, '--lle cannot be used with --te')
+
+        extent = {}
+        param1, param2 = 'tr', 'ts'
+        with self.assertRaises(CommandError) as opt_err:
+            valid_ext, extent = IngestCommand.check_extent_pairs(extent, options_5, param1, param2)
+            self.assertEqual(opt_err.message, '--tr cannot be used with --ts')
 
 
 from django.core.management import call_command
