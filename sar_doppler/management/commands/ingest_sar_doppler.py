@@ -3,7 +3,7 @@ from optparse import make_option
 
 from nansat.tools import GeolocationError
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from geospaas.utils import uris_from_args
 from geospaas.catalog.models import DatasetURI
@@ -21,7 +21,13 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('gsar_files', nargs='*', type=str)
-
+        # Activate domain
+        parser.add_argument('--with-domain',
+                            action='store_true',
+                            help='Use this parameter if you want to initiate ingesting for a'
+                                 'specific domain. Spatial reference (--epsg or --proj4) and '
+                                 'extent parameters ((--te or --lle) and (--tr or --ts))'
+                                 'must be defined separately')
         # Spatial reference options
         parser.add_argument('--epsg',
                             metavar='EPSG_CODE',
@@ -67,14 +73,15 @@ class Command(BaseCommand):
                             help='Force reprocessing')
 
     def handle(self, *args, **options):
-        #if not len(args)==1:
-        #    raise IOError('Please provide one filename only')
-        print(options)
-        print(options['ts'])
-        pass
+
+        srs, extent = None, None
+        if options['with_domain'] is True:
+            srs, extent = Command.validate_domain(options)
+            self.stdout.write('Domain parameters are valid')
+
         for non_ingested_uri in uris_from_args(options['gsar_files']):
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
-            ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
+            ds, cr = Dataset.objects.get_or_create(non_ingested_uri, srs, extent, **options)
             if not type(ds) == catalogDataset:
                 self.stdout.write('Not found: %s\n' % non_ingested_uri)
             elif cr:
@@ -88,16 +95,45 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write('Was already added: %s\n' % non_ingested_uri)
 
-    def validate_domain(self, options):
+    @staticmethod
+    def validate_domain(options):
         # Check Spatial reference options
-        valid_domain, srs = self.check_srs(options)
+        srs = Command.check_srs(options)
+        if srs is None:
+            raise CommandError('Spatial reference was not specified')
 
-    def check_srs(self, options):
+        extent = {}
+        extent = Command.check_extent_pairs(extent, options, 'lle', 'te')
+        if extent is None:
+            raise CommandError('--lle or --te was not specified')
+
+        extent = Command.check_extent_pairs(extent, options, 'tr', 'ts')
+        if extent is None:
+            raise CommandError('--tr or --ts was not specified')
+
+        return srs, extent
+
+    @staticmethod
+    def check_srs(options):
         if options['epsg'] is not None and options['proj4'] is not None:
-            raise IOError('Only one Spatial reference system can be used (EPSG or PROJ4')
+            raise CommandError('Only one Spatial reference system can be used (EPSG or PROJ4)')
         elif options['epsg'] is not None:
-            return True, options['epsg']
+            return options['epsg']
         elif options['proj4'] is not None:
-            return True, options['proj4']
+            return options['proj4']
         else:
-            return False, None
+            return None
+
+    @staticmethod
+    def check_extent_pairs(extent, options, param1, param2):
+        if options[param1] is not None and options[param2] is not None:
+            raise CommandError('--%s cannot be used with --%s' % (param1, param2))
+        elif options[param1] is not None:
+            extent[param1] = options[param1]
+            return extent
+        elif options[param2] is not None:
+            extent[param2] = options[param2]
+            return extent
+        else:
+            return None
+
