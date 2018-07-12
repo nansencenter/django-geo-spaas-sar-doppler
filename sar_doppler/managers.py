@@ -113,3 +113,27 @@ class DatasetManager(DM):
     @staticmethod
     def check_intersection(dom, img_geometry):
         return img_geometry.Intersect(dom.get_border_geometry())
+
+    @staticmethod
+    def get_pass_from_uri(uri):
+        chopped_uri = uri.split('/')
+        if 'ascending' in chopped_uri:
+            sat_pass = 'ascending'
+        elif 'descending' in chopped_uri:
+            sat_pass = 'descending'
+        else:
+            sat_pass = None
+            warnings.warn('Can not extract satellite pass from uri')
+        return sat_pass
+
+    @staticmethod
+    def get_pol_from_uri(uri):
+        chopped_uri = uri.split('/')
+        if 'HH' in chopped_uri:
+            polarization = 'HH'
+        elif 'VV' in chopped_uri:
+            polarization = 'VV'
+        else:
+            polarization = None
+            warnings.warn('Can not extract polarization from uri')
+        return polarization
