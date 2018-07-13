@@ -78,15 +78,17 @@ class Command(BaseCommand):
         if options['with_domain'] is True:
             srs, extent = Command.validate_domain(options)
             self.stdout.write('Domain parameters are valid')
-
+        uris_num = len(uris_from_args(options['gsar_files']))
+        uri_id = 1
         for non_ingested_uri in uris_from_args(options['gsar_files']):
+            print('Processed: %s / %s' % (uri_id, uris_num))
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
             ds, cr = Dataset.objects.get_or_create(non_ingested_uri, srs, extent, **options)
-            if not type(ds) == catalogDataset:
-                self.stdout.write('Not found: %s\n' % non_ingested_uri)
-            elif ds is None:
+            if ds is None:
                 self.stdout.write('Does not intersect with a required domain: %s\n'
                                   % non_ingested_uri)
+            elif not type(ds) == catalogDataset:
+                self.stdout.write('Not found: %s\n' % non_ingested_uri)
             elif cr:
                 self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
             else:
@@ -97,6 +99,7 @@ class Command(BaseCommand):
                     self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
                 else:
                     self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+            uri_id += 1
 
     @staticmethod
     def validate_domain(options):
