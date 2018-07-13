@@ -55,6 +55,11 @@ class DatasetManager(DM):
 
         # set Dataset entry_title
         ds.entry_title = 'SAR Doppler'
+        # Add polarization and pass information to summary
+        polarization = DatasetManager.get_pol_from_uri(uri)
+        sat_path = DatasetManager.get_pass_from_uri(uri)
+        ds.summary = ','.join([str(polarization), str(sat_path)])
+
         ds.save()
         not_corrupted = True
 

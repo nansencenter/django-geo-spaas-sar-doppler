@@ -30,13 +30,11 @@ class TestDataset(TestCase):
         self.assertIsInstance(self.ds.time_coverage_end, str)
         self.assertEqual(self.ds.time_coverage_end, '2010-01-01T11:57:18.303293')
 
-    @skip('future')
     def test_polarization(self):
-        pass
+        self.assertEqual(self.ds.summary.split(',')[0], 'VV')
 
-    @skip('future')
     def test_path(self):
-        pass
+        self.assertEqual(self.ds.summary.split(',')[1], 'ascending')
 
     def test_uri(self):
         self.assertEqual(self.ds.dataseturi_set.first().uri, self.gsar_file_src)
