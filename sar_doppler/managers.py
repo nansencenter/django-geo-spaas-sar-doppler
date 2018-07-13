@@ -23,7 +23,7 @@ from nansat.nansat import Nansat
 from nansat.nsr import NSR
 from nansat.domain import Domain
 from nansat.figure import Figure
-from sardoppler.sardoppler import Doppler
+from sardoppler.gsar import gsar
 
 
 class DatasetManager(DM):
@@ -107,12 +107,19 @@ class DatasetManager(DM):
         return extent_str
 
     @staticmethod
+    def geometry_from_gsar(uri, subswath):
+        gsar_file = gsar(uri)
+        lat = gsar_file.getdata(channel=subswath)['LATITUDE']
+        lon = gsar_file.getdata(channel=subswath)['LONGITUDE']
+        dom = Domain(lon=lon, lat=lat)
+        return dom.get_border_geometry()
+
+    @staticmethod
     def unite_geometry(uri, subswaths_num):
-        n = Nansat(uri, subswath=0)
-        poly_base = n.get_border_geometry()
-        for subswath_num in range(1, subswaths_num):
-            n = Nansat(uri, subswath=subswath_num)
-            poly_base = poly_base.Union(n.get_border_geometry())
+        poly_base = DatasetManager.geometry_from_gsar(uri, 0)
+        for subswaths_num in range(1, subswaths_num):
+            swant_geomety = DatasetManager.geometry_from_gsar(uri, subswaths_num)
+            poly_base = poly_base.Union(swant_geomety)
         return poly_base
 
     @staticmethod
