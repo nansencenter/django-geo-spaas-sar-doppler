@@ -12,6 +12,7 @@ from geospaas.catalog.models import Dataset as catalogDataset
 from sar_doppler.models import Dataset
 from sar_doppler.errors import AlreadyExists
 import os
+from datetime import datetime
 
 
 class Command(BaseCommand):
@@ -67,12 +68,28 @@ class Command(BaseCommand):
                             help='Set domain boundaries. '
                                  'Note that --lle cannot be used with --te')
 
+        # Specify a range of time
+        parser.add_argument('--start',
+                            metavar='YYYY-MM-DD',
+                            type=str,
+                            default='1900-01-01',
+                            help='Specify start of a time range')
+
+        parser.add_argument('--end',
+                            metavar='YYYY-MM-DD',
+                            type=str,
+                            default='2093-03-11',
+                            help='Specify end of a time range')
+
         # Processing options and features
         parser.add_argument('--reprocess',
                             action='store_true',
                             help='Force reprocessing')
 
     def handle(self, *args, **options):
+
+        options['start'] = Command.parse_date(options['start'])
+        options['end'] = Command.parse_date(options['end'])
 
         srs, extent = None, None
         if options['with_domain'] is True:
@@ -143,3 +160,6 @@ class Command(BaseCommand):
         else:
             return None
 
+    @staticmethod
+    def parse_date(timestamp):
+        return datetime.strptime(timestamp, '%Y-%m-%d')
