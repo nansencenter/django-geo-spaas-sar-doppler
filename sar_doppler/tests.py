@@ -15,22 +15,20 @@ from nansat import Domain
 class TestDataset(TestCase):
     fixtures = ["vocabularies"]
 
-    gsar_file_src = 'file://localhost/mnt/10.11.12.232/sat_downloads_asar/' \
-                    'level-0/2010-01/gsar_rvl/RVL_ASA_WS_20100110111600123.gsar'
-    srs = 4326
-    extent = {'lle': [3, 73.5, 6, 74], 'tr': [0.1, 0.1]}
+    gsar_file_src = 'file://localhost/mnt/10.11.12.232/sat_downloads_asar/level-0/2010-01/ascending' \
+                    '/VV/gsar_rvl/RVL_ASA_WS_20100101115616482.gsar'
 
     def setUp(self):
-        self.ds, _ = SARDAtaset.objects.get_or_create(self.gsar_file_src, self.srs, self.extent)
+        self.ds, _ = SARDAtaset.objects.get_or_create(self.gsar_file_src, None, None)
 
     def test_file_added2db(self):
         self.assertEqual(len(Dataset.objects.all()), 1)
 
     def test_time_coverage(self):
         self.assertIsInstance(self.ds.time_coverage_start, str)
-        self.assertEqual(self.ds.time_coverage_start, '2010-01-10T11:15:59.021842')
+        self.assertEqual(self.ds.time_coverage_start, '2010-01-01T11:56:15.131639')
         self.assertIsInstance(self.ds.time_coverage_end, str)
-        self.assertEqual(self.ds.time_coverage_end, '2010-01-10T11:17:00.465423')
+        self.assertEqual(self.ds.time_coverage_end, '2010-01-01T11:57:18.303293')
 
     @skip('future')
     def test_polarization(self):
