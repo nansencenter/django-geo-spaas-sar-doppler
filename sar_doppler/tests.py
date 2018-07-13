@@ -10,6 +10,7 @@ from geospaas.utils import nansat_filename
 from unittest import skip
 from geospaas.catalog.models import Dataset
 from nansat import Domain
+from datetime import datetime
 
 
 class TestDataset(TestCase):
@@ -225,6 +226,12 @@ class TestIngestCommand(TestCase):
         self.assertIsInstance(extent, dict)
         self.assertEqual(extent['te'], [1, 2, 3, 4])
         self.assertEqual(extent['ts'], [1, 2])
+
+    def test_parse_time(self):
+        timestamp1 = '2010-01-01'
+        test_out1 = IngestCommand.parse_date(timestamp1)
+        self.assertIsInstance(test_out1, datetime)
+        self.assertEqual(test_out1, datetime(2010, 1, 1))
 
 
 # class TestProcessingSARDoppler(TestCase):
