@@ -60,26 +60,24 @@ class TestDataset(TestCase):
 
 
 class TestDatasetManager(TestCase):
-    fixtures = ["vocabularies"]
-
-    gsar_file_src = 'file://localhost/mnt/10.11.12.232/sat_downloads_asar/' \
-                    'level-0/2010-01/gsar_rvl/RVL_ASA_WS_20100110111600123.gsar'
 
     def test_check_intersection(self):
         # Domain inside image
-        dom_1 = Domain(4326, '-lle 3 73.5 3.2 74 -tr 0.1 0.1')
+        dom_1 = Domain(4326, '-lle 2 2 3 3 -tr 0.1 0.1')
         # Domain intersect border of image
-        dom_2 = Domain(4326, '-lle 3 73.5 6 74 -tr 0.1 0.1')
+        dom_2 = Domain(4326, '-lle 2 9 3 13 -tr 0.1 0.1')
         # Image inside the domain
-        dom_3 = Domain(4326, '-lle -6 70 6 75 -tr 0.1 0.1')
+        dom_3 = Domain(4326, '-lle -2 -2 13 13 -tr 0.1 0.1')
         # Image outside of the domain
-        dom_4 = Domain(4326, '-lle 6 70 10 75 -tr 0.1 0.1')
+        dom_4 = Domain(4326, '-lle 13 13 15 15 -tr 0.1 0.1')
 
-        geometry = DatasetManager.unite_geometry(nansat_filename(self.gsar_file_src), 2)
-        self.assertTrue(DatasetManager.check_intersection(dom_1, geometry))
-        self.assertTrue(DatasetManager.check_intersection(dom_2, geometry))
-        self.assertTrue(DatasetManager.check_intersection(dom_3, geometry))
-        self.assertFalse(DatasetManager.check_intersection(dom_4, geometry))
+        # Image domain
+        img_dom = Domain(4326, '-lle 0 0 10 10 -tr 0.1 0.1')
+        img_geom = img_dom.get_border_geometry()
+        self.assertTrue(DatasetManager.check_intersection(dom_1, img_geom))
+        self.assertTrue(DatasetManager.check_intersection(dom_2, img_geom))
+        self.assertTrue(DatasetManager.check_intersection(dom_3, img_geom))
+        self.assertFalse(DatasetManager.check_intersection(dom_4, img_geom))
 
     def test_assemble_domain_extent(self):
         extent_1 = {'lle': [1, 2, 3, 4], 'ts': [1, 2]}
