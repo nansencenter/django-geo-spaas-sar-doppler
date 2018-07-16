@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from management.commands.ingest_sar_doppler import Command as IngestCommand
-from managers import DatasetManager
+from managers import DatasetManager, gsar
 from models import Dataset as SARDAtaset
 from django.core.management.base import CommandError
 from django.core.management import call_command
@@ -11,6 +11,7 @@ from unittest import skip
 from geospaas.catalog.models import Dataset
 from nansat import Domain
 from datetime import datetime
+from mock import patch
 
 
 class TestDataset(TestCase):
@@ -122,6 +123,14 @@ class TestDatasetManager(TestCase):
 
         sat_pass = DatasetManager.get_pol_from_uri(uri4)
         self.assertIsNone(sat_pass)
+
+    def test_get_time_from_gsar(self):
+        timestamp = u'2010-01-10T11:15:59.021842'
+        patcher = patch('sar_doppler.managers.gsar')
+        patch_gsar = patcher.start()
+        patch_gsar.return_value.getinfo.return_value.gate = [{'YTIME': timestamp}]
+        test = DatasetManager.get_time_from_gsar('uri')
+        self.assertEqual(datetime.strptime(timestamp, '%Y-%d-%mT%H:%M:%S.%f'), test)
 
 
 class TestIngestCommand(TestCase):
