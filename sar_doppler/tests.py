@@ -21,7 +21,9 @@ class TestDataset(TestCase):
                     '/VV/gsar_rvl/RVL_ASA_WS_20100101115616482.gsar'
 
     def setUp(self):
-        self.ds, _ = SARDAtaset.objects.get_or_create(self.gsar_file_src, None, None)
+        self.ds, _ = SARDAtaset.objects.get_or_create(self.gsar_file_src, None, None,
+                                                      start=datetime(1800, 1, 1),
+                                                      end=datetime(2100, 1, 1))
 
     def test_file_added2db(self):
         self.assertEqual(len(Dataset.objects.all()), 1)
