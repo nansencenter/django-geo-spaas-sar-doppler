@@ -24,6 +24,7 @@ from nansat.nsr import NSR
 from nansat.domain import Domain
 from nansat.figure import Figure
 from sardoppler.gsar import gsar
+from datetime import datetime
 
 
 class DatasetManager(DM):
@@ -149,3 +150,9 @@ class DatasetManager(DM):
             polarization = None
             warnings.warn('Can not extract polarization from uri')
         return polarization
+
+    @staticmethod
+    def get_time_from_gsar(uri):
+        gsar_file = gsar(uri)
+        metadata = gsar_file.getinfo(channel=0).gate[0]['YTIME']
+        return datetime.strptime(metadata, '%Y-%d-%mT%H:%M:%S.%f')
