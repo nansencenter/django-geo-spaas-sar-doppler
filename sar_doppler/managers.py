@@ -33,6 +33,12 @@ class DatasetManager(DM):
     NUM_BORDER_POINTS = 10
 
     def get_or_create(self, uri, srs, extent_dict, reprocess=False, *args, **kwargs):
+        filename = nansat_filename(uri)
+
+        # Check time
+        time_coverage = DatasetManager.get_time_from_gsar(filename)
+        if time_coverage > kwargs['end'] or time_coverage < kwargs['start']:
+            return None, True
 
         # Assemble domain
         spec_domain = False
@@ -41,7 +47,6 @@ class DatasetManager(DM):
             dom = Domain(srs, extent_str)
             spec_domain = True
 
-        filename = nansat_filename(uri)
         image_geometry = DatasetManager.unite_geometry(filename, self.NUM_SUBSWATS)
 
         if spec_domain:
