@@ -24,13 +24,19 @@ from nansat.nsr import NSR
 from nansat.domain import Domain
 from nansat.figure import Figure
 from sardoppler.gsar import gsar
+from sardoppler.sardoppler import Doppler
 from datetime import datetime
 
 
 class DatasetManager(DM):
 
+    DOMAIN = 'file://localhost'
     NUM_SUBSWATS = 5
     NUM_BORDER_POINTS = 10
+    WKV_NAME = {
+        'dc_anomaly': 'anomaly_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
+        'dc_velocity': 'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_surface_velocity'
+    }
 
     def get_or_create(self, uri, srs, extent_dict, reprocess=False, *args, **kwargs):
         filename = nansat_filename(uri)
@@ -62,9 +68,8 @@ class DatasetManager(DM):
         # set Dataset entry_title
         ds.entry_title = 'SAR Doppler'
         # Add polarization and pass information to summary
-        polarization = DatasetManager.get_pol_from_uri(uri)
-        sat_path = DatasetManager.get_pass_from_uri(uri)
-        ds.summary = ','.join([str(polarization), str(sat_path)])
+        ds.sat_pass = DatasetManager.get_pass_from_uri(uri)
+        ds.polarization = DatasetManager.get_pol_from_uri(uri)
 
         ds.save()
         not_corrupted = True
@@ -87,16 +92,9 @@ class DatasetManager(DM):
             geoloc.save()
 
         # Create data products
-        # mm = self.__module__.split('.')
-        # module = '%s.%s' % (mm[0], mm[1])
-        # local uri path for visualizations
-        # mp = media_path(module, swath_data[i].fileName)
-        # ppath = product_path(module, swath_data[i].fileName)
+        if reprocess:
+            map(lambda i: self.generate_product(filename, i, ds), range(self.NUM_SUBSWATS))
 
-        # for i in range(self.NUM_SUBSWATS):
-        #    self.generate_product(swath_data[i], i, ppath, mp, ds)
-
-        # return ds, not_corrupted
         return ds, not_corrupted
 
     @staticmethod
@@ -161,3 +159,33 @@ class DatasetManager(DM):
         gsar_file = gsar(uri)
         metadata = gsar_file.getinfo(channel=0).gate[0]['YTIME']
         return datetime.strptime(metadata, '%Y-%d-%mT%H:%M:%S.%f')
+
+    def generate_product(self, uri, swath_num, dataset):
+        swath_data = Doppler(uri, subswath=swath_num)
+        swath_data.add_band(array=swath_data.anomaly(),
+                            parameters={'wkv': self.WKV_NAME['dc_anomaly']})
+        swath_data.add_band(array=swath_data.geophysical_doppler_shift(),
+                            parameters={'wkv': self.WKV_NAME['dc_velocity']})
+
+        self.export(swath_data, swath_num, dataset)
+
+    def export(self, swath_data, swath_num, dataset):
+        ppath = self.get_product_path(swath_data.fileName)
+        file_dst = DatasetManager.assemble_filename(ppath, swath_data.fileName, swath_num)
+        print('Exporting: %s' % file_dst)
+        swath_data.set_metadata(key='Originating file', value=swath_data.fileName)
+        swath_data.export(filename=file_dst)
+        ncuri = os.path.join(self.DOMAIN, file_dst)
+        new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri, dataset=dataset)
+
+    @staticmethod
+    def assemble_filename(ppath, origin,  swath_num):
+        basename = os.path.basename(origin).split('.')[0]
+        return '%s/%ssubswath%d.nc' % (ppath, basename, swath_num)
+
+    def get_product_path(self, origin):
+        mm = self.__module__.split('.')
+        module = '%s.%s' % (mm[0], mm[1])
+        # local uri path for visualizations
+        ppath = product_path(module, origin)
+        return ppath

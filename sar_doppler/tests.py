@@ -9,7 +9,7 @@ from django.utils.six import StringIO
 from geospaas.utils import nansat_filename
 from unittest import skip
 from geospaas.catalog.models import Dataset
-from nansat import Domain
+from nansat import Domain, Nansat
 from datetime import datetime
 from mock import patch
 import numpy as np
@@ -38,7 +38,8 @@ class TestDataset(TestCase):
     def setUp(self):
         self.ds, _ = SARDAtaset.objects.get_or_create(self.gsar_file_src, None, None,
                                                       start=datetime(1800, 1, 1),
-                                                      end=datetime(2100, 1, 1))
+                                                      end=datetime(2100, 1, 1),
+                                                      reprocess=True)
 
     def test_file_added2db(self):
         self.assertEqual(len(Dataset.objects.all()), 1)
@@ -50,12 +51,13 @@ class TestDataset(TestCase):
         self.assertEqual(self.ds.time_coverage_end, '2010-01-01T11:57:18.303293')
 
     def test_polarization(self):
-        self.assertEqual(self.ds.summary.split(',')[0], 'VV')
+        self.assertEqual(self.ds.polarization, 'VV')
 
     def test_path(self):
-        self.assertEqual(self.ds.summary.split(',')[1], 'ascending')
+        self.assertEqual(self.ds.sat_pass, 'ascending')
 
     def test_uri(self):
+        self.assertEqual(len(self.ds.dataseturi_set.all()), 6)
         self.assertEqual(self.ds.dataseturi_set.first().uri, self.gsar_file_src)
 
 
@@ -267,20 +269,3 @@ class TestIngestCommand(TestCase):
         test_out1 = IngestCommand.parse_date(timestamp1)
         self.assertIsInstance(test_out1, datetime)
         self.assertEqual(test_out1, datetime(2010, 1, 1))
-
-
-# class TestProcessingSARDoppler(TestCase):
-#
-#    fixtures = ["vocabularies"]
-#
-#    def test_process_sar_doppler(self):
-#        out = StringIO()
-#        wf = 'file://localhost/mnt/10.11.12.231/sat_auxdata/model/ncep/gfs/' \
-#                'gfs20091116/gfs.t18z.master.grbf03'
-#        call_command('ingest', wf, stdout=out)
-#        f = 'file://localhost/mnt/10.11.12.231/sat_downloads_asar/level-0/' \
-#                'gsar_rvl/RVL_ASA_WS_20091116195940116.gsar'
-#        call_command('ingest_sar_doppler', f, stdout=out)
-#        self.assertIn('Successfully added:', out.getvalue())
-
-
