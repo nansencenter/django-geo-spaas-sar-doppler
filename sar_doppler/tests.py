@@ -1,32 +1,34 @@
 from django.test import TestCase
 
 from management.commands.ingest_sar_doppler import Command as IngestCommand
-from managers import DatasetManager, gsar
+from managers import DatasetManager, gsar, Doppler
 from models import Dataset as SARDAtaset
 from django.core.management.base import CommandError
 from django.core.management import call_command
 from django.utils.six import StringIO
-from geospaas.utils import nansat_filename
-from unittest import skip
 from geospaas.catalog.models import Dataset
-from nansat import Domain, Nansat
+from nansat import Domain
 from datetime import datetime
 from mock import patch
 import numpy as np
+import os
 
 
 def generate_lat_lon(n, m):
-    return {'LATITUDE': np.array([range(n, m) for i in range(10)], dtype=np.int32),
-            'LONGITUDE': np.array([[i] * (m - n) for i in range(10)], dtype=np.int32)}
+    lat = np.array([range(n, m) for i in range(10)], dtype=np.int32)
+    lon = np.array([[i] * (m - n) for i in range(10)], dtype=np.int32)
+    return lat, lon
 
 
 def mock_get_data(*args, **kwargs):
     if kwargs['channel'] == 0:
-        return generate_lat_lon(1, 4)
+        lat, lon = generate_lat_lon(1, 4)
     if kwargs['channel'] == 1:
-        return generate_lat_lon(4, 7)
+        lat, lon = generate_lat_lon(4, 7)
     if kwargs['channel'] == 2:
-        return generate_lat_lon(7, 11)
+        lat, lon = generate_lat_lon(7, 11)
+
+    return {'LATITUDE': lat, 'LONGITUDE': lon}
 
 
 class TestDataset(TestCase):
@@ -159,6 +161,22 @@ class TestDatasetManager(TestCase):
         patch_gsar.return_value.getinfo.return_value.gate = [{'YTIME': timestamp}]
         test = DatasetManager.get_time_from_gsar('uri')
         self.assertEqual(datetime.strptime(timestamp, '%Y-%d-%mT%H:%M:%S.%f'), test)
+
+    def test_assemble_filename(self):
+        ppath = '/product/path/'
+        origin = '/path/to/the/file.gsar'
+        swath_num = 1
+        test_dest = DatasetManager.assemble_filename(ppath, origin, swath_num)
+        self.assertIsInstance(test_dest, str)
+        self.assertEqual(test_dest, '/product/path/filesubswath1.nc')
+
+    def test_get_product_path(self):
+        from django.conf import settings
+        expected_ppath = os.path.join(settings.PRODUCTS_ROOT, 'managers', 'file')
+        test_ppath = DatasetManager().get_product_path('/path/to/the/file.gsar')
+        self.assertIsInstance(test_ppath, str)
+        self.assertEqual(test_ppath, expected_ppath)
+
 
 
 class TestIngestCommand(TestCase):
