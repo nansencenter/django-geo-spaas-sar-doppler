@@ -50,10 +50,10 @@ class TestDataset(TestCase):
         self.assertEqual(self.ds.time_coverage_end, '2010-01-01T11:57:18.303293')
 
     def test_polarization(self):
-        self.assertEqual(self.ds.summary.split(',')[0], 'VV')
+        self.assertEqual(self.ds.polarization, 'VV')
 
     def test_path(self):
-        self.assertEqual(self.ds.summary.split(',')[1], 'ascending')
+        self.assertEqual(self.ds.sat_pass, 'ascending')
 
     def test_uri(self):
         self.assertEqual(self.ds.dataseturi_set.first().uri, self.gsar_file_src)
