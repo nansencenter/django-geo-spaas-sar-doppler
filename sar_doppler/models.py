@@ -7,8 +7,8 @@ from sar_doppler.managers import DatasetManager
 
 class Dataset(CatalogDataset):
 
+    polarization = models.CharField(null=True, max_length=20, default='')
+    sat_pass = models.CharField(null=True, max_length=20, default='',
+                                verbose_name='Satellite orbit pass')
+
     objects = DatasetManager()
-
-    class Meta:
-        proxy = True
-
