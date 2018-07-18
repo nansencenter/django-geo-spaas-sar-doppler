@@ -170,10 +170,10 @@ class DatasetManager(DM):
         self.export(swath_data, swath_num, dataset)
 
     def export(self, swath_data, swath_num, dataset):
-        ppath = self.get_product_path(swath_data.fileName)
-        file_dst = DatasetManager.assemble_filename(ppath, swath_data.fileName, swath_num)
+        ppath = self.get_product_path(swath_data.filename)
+        file_dst = DatasetManager.assemble_filename(ppath, swath_data.filename, swath_num)
         print('Exporting: %s' % file_dst)
-        swath_data.set_metadata(key='Originating file', value=swath_data.fileName)
+        swath_data.set_metadata(key='Originating file', value=swath_data.filename)
         swath_data.export(filename=file_dst)
         ncuri = os.path.join(self.DOMAIN, file_dst)
         new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri, dataset=dataset)
@@ -181,7 +181,7 @@ class DatasetManager(DM):
     @staticmethod
     def assemble_filename(ppath, origin,  swath_num):
         basename = os.path.basename(origin).split('.')[0]
-        return '%s/%ssubswath%d.nc' % (ppath, basename, swath_num)
+        return os.path.join(ppath, '%ssubswath%d.nc' % (basename, swath_num))
 
     def get_product_path(self, origin):
         mm = self.__module__.split('.')
