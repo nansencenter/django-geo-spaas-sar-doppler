@@ -153,12 +153,12 @@ class TestDatasetManager(TestCase):
         self.assertIsNone(sat_pass)
 
     def test_get_time_from_gsar(self):
-        timestamp = u'2010-01-10T11:15:59.021842'
+        timestamp = u'2010-01-21T11:15:59.021842'
         patcher = patch('sar_doppler.managers.gsar')
         patch_gsar = patcher.start()
         patch_gsar.return_value.getinfo.return_value.gate = [{'YTIME': timestamp}]
         test = DatasetManager.get_time_from_gsar('uri')
-        self.assertEqual(datetime.strptime(timestamp, '%Y-%d-%mT%H:%M:%S.%f'), test)
+        self.assertEqual(datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f'), test)
 
 
 class TestIngestCommand(TestCase):

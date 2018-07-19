@@ -178,4 +178,4 @@ class DatasetManager(models.Manager):
     def get_time_from_gsar(uri):
         gsar_file = gsar(uri)
         metadata = gsar_file.getinfo(channel=0).gate[0]['YTIME']
-        return datetime.strptime(metadata, '%Y-%d-%mT%H:%M:%S.%f')
+        return datetime.strptime(metadata, '%Y-%m-%dT%H:%M:%S.%f')
