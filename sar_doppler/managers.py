@@ -1,44 +1,66 @@
 import os, warnings
-from math import sin, pi, cos, acos, copysign
-import numpy as np
-from scipy.ndimage.filters import median_filter
-
-from dateutil.parser import parse
-from datetime import timedelta
-
-from django.conf import settings
-from django.utils import timezone
+from django.contrib.gis.geos import WKTReader
 from django.db import models
-from django.contrib.gis.geos import WKTReader, Polygon, MultiPolygon
 
 from geospaas.utils import nansat_filename, media_path, product_path
-from geospaas.vocabularies.models import Parameter
-from geospaas.catalog.models import DatasetParameter, GeographicLocation
 from geospaas.catalog.models import Dataset, DatasetURI
-from geospaas.viewer.models import Visualization
-from geospaas.viewer.models import VisualizationParameter
-from geospaas.nansat_ingestor.managers import DatasetManager as DM
+from geospaas.nansat_ingestor.managers import DatasetManager as NansatIngestorManager
 
-from nansat.nansat import Nansat
-from nansat.nsr import NSR
-from nansat.domain import Domain
-from nansat.figure import Figure
+from nansat import Nansat, Domain
 from sardoppler.gsar import gsar
 from sardoppler.sardoppler import Doppler
 from datetime import datetime
 
 
-class DatasetManager(DM):
+class DatasetReprocessing:
 
     DOMAIN = 'file://localhost'
-    NUM_SUBSWATS = 5
-    NUM_BORDER_POINTS = 10
     WKV_NAME = {
         'dc_anomaly': 'anomaly_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
         'dc_velocity': 'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_surface_velocity'
     }
 
-    def get_or_create(self, uri, srs, extent_dict, reprocess=False, *args, **kwargs):
+    def reprocess(self, uri, srs, extent_dict, reprocess=False, *args, **kwargs):
+        # map(lambda i: self.generate_product(filename, i, ds), range(self.NUM_SUBSWATS))
+        pass
+
+    def generate_product(self, uri, swath_num, dataset):
+        swath_data = Doppler(uri, subswath=swath_num)
+        swath_data.add_band(array=swath_data.anomaly(),
+                            parameters={'wkv': self.WKV_NAME['dc_anomaly']})
+        swath_data.add_band(array=swath_data.geophysical_doppler_shift(),
+                            parameters={'wkv': self.WKV_NAME['dc_velocity']})
+
+        self.export(swath_data, swath_num, dataset)
+
+    def export(self, swath_data, swath_num, dataset):
+        ppath = self.get_product_path(swath_data.fileName)
+        file_dst = DatasetManager.assemble_filename(ppath, swath_data.fileName, swath_num)
+        print('Exporting: %s' % file_dst)
+        swath_data.set_metadata(key='Originating file', value=swath_data.fileName)
+        swath_data.export(filename=file_dst)
+        ncuri = os.path.join(self.DOMAIN, file_dst)
+        new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri, dataset=dataset)
+
+    @staticmethod
+    def assemble_filename(ppath, origin,  swath_num):
+        basename = os.path.basename(origin).split('.')[0]
+        return '%s/%ssubswath%d.nc' % (ppath, basename, swath_num)
+
+    def get_product_path(self, origin):
+        mm = self.__module__.split('.')
+        module = '%s.%s' % (mm[0], mm[1])
+        # local uri path for visualizations
+        ppath = product_path(module, origin)
+        return ppath
+
+
+class DatasetManager(models.Manager):
+
+    NUM_SUBSWATS = 5
+    NUM_BORDER_POINTS = 10
+
+    def get_or_create(self, uri, srs, extent_dict, *args, **kwargs):
         filename = nansat_filename(uri)
 
         # Check time
@@ -60,40 +82,38 @@ class DatasetManager(DM):
             if not intersection:
                 return None, True
 
-        # ingest file to db
-        ds, created = super(DatasetManager, self).get_or_create(uri, *args, **kwargs)
+        ds, cr = NansatIngestorManager().get_or_create(uri, *args, **kwargs)
         if not type(ds) == Dataset:
             return ds, False
 
-        # set Dataset entry_title
-        ds.entry_title = 'SAR Doppler'
-        # Add polarization and pass information to summary
-        ds.sat_pass = DatasetManager.get_pass_from_uri(uri)
-        ds.polarization = DatasetManager.get_pol_from_uri(uri)
+        # ingest file to sar_doppler db
+        ds, created = super(DatasetManager, self).get_or_create(
+            entry_title='SAR Doppler',
+            ISO_topic_category=ds.ISO_topic_category,
+            data_center=ds.data_center,
+            summary=ds.summary,
+            time_coverage_start=ds.time_coverage_start,
+            time_coverage_end=ds.time_coverage_end,
+            source=ds.source,
+            geographic_location=ds.geographic_location,
+            sat_pass=DatasetManager.get_pass_from_uri(uri),
+            polarization=DatasetManager.get_pol_from_uri(uri))
 
         ds.save()
         not_corrupted = True
 
         n = Nansat(filename, subswath=0)
         gg = WKTReader().read(n.get_border_wkt())
-        if ds.geographic_location.geometry.area > gg.area and not reprocess:
-            return ds, False
 
         # Get geolocation of dataset - this must be updated
         geoloc = ds.geographic_location
 
         # Check geometry, return if it is the same as the stored one
-        if geoloc.geometry == image_geometry.ExportToIsoWkt() and not reprocess:
-            return ds, True
 
         if geoloc.geometry != image_geometry.ExportToIsoWkt():
             # Change the dataset geolocation to cover all subswaths
             geoloc.geometry = image_geometry.ExportToIsoWkt()
             geoloc.save()
-
-        # Create data products
-        if reprocess:
-            map(lambda i: self.generate_product(filename, i, ds), range(self.NUM_SUBSWATS))
 
         return ds, not_corrupted
 
@@ -159,33 +179,3 @@ class DatasetManager(DM):
         gsar_file = gsar(uri)
         metadata = gsar_file.getinfo(channel=0).gate[0]['YTIME']
         return datetime.strptime(metadata, '%Y-%d-%mT%H:%M:%S.%f')
-
-    def generate_product(self, uri, swath_num, dataset):
-        swath_data = Doppler(uri, subswath=swath_num)
-        swath_data.add_band(array=swath_data.anomaly(),
-                            parameters={'wkv': self.WKV_NAME['dc_anomaly']})
-        swath_data.add_band(array=swath_data.geophysical_doppler_shift(),
-                            parameters={'wkv': self.WKV_NAME['dc_velocity']})
-
-        self.export(swath_data, swath_num, dataset)
-
-    def export(self, swath_data, swath_num, dataset):
-        ppath = self.get_product_path(swath_data.fileName)
-        file_dst = DatasetManager.assemble_filename(ppath, swath_data.fileName, swath_num)
-        print('Exporting: %s' % file_dst)
-        swath_data.set_metadata(key='Originating file', value=swath_data.fileName)
-        swath_data.export(filename=file_dst)
-        ncuri = os.path.join(self.DOMAIN, file_dst)
-        new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri, dataset=dataset)
-
-    @staticmethod
-    def assemble_filename(ppath, origin,  swath_num):
-        basename = os.path.basename(origin).split('.')[0]
-        return '%s/%ssubswath%d.nc' % (ppath, basename, swath_num)
-
-    def get_product_path(self, origin):
-        mm = self.__module__.split('.')
-        module = '%s.%s' % (mm[0], mm[1])
-        # local uri path for visualizations
-        ppath = product_path(module, origin)
-        return ppath
