@@ -34,11 +34,10 @@ class Command(BaseCommand):
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
             try:
                 ds, cr = Dataset.objects.get_or_create(non_ingested_uri, srs, extent, **options)
-                ds.save()
-            except:
+            except Exception as ex:
+                self.stdout.write(ex.message)
                 uri_id += 1
-                self.stdout.write('ERROR : %s\n'
-                                  % non_ingested_uri)
+                self.stdout.write('ERROR : %s\n' % non_ingested_uri)
                 continue
             if ds is None:
 
