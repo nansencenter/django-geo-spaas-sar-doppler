@@ -142,8 +142,7 @@ class DatasetManager(DM):
             swath_data[i] = Doppler(fn, subswath=i)
 
         # Get module name
-        mm = self.__module__.split('.')
-        module = '%s.%s' % (mm[0], mm[1])
+        module = self.__module__.split('.')[0]
         # Set media path (where images will be stored)
         mp = media_path(module, swath_data[i].filename)
         # Set product path (where netcdf products will be stored)
@@ -221,6 +220,12 @@ class DatasetManager(DM):
                 filename = '%s_subswath_%d.png' % (band, i)
                 # check uniqueness of parameter
                 param = Parameter.objects.get(short_name=band)
+                if swath_data[i].filename == \
+                        '/mnt/10.11.12.232/sat_downloads_asar/level-0/2010-01/ascending/HH/gsar_rvl/RVL_ASA_WS_20100119213139150.gsar' \
+                    or swath_data[i].filename == \
+                        '/mnt/10.11.12.232/sat_downloads_asar/level-0/2010-01/descending/HH/gsar_rvl/RVL_ASA_WS_20100129225931627.gsar':
+                    # generates memory error in write_figure...
+                    continue
                 fig = swath_data[i].write_figure(
                     os.path.join(mp, filename),
                     bands=band,
