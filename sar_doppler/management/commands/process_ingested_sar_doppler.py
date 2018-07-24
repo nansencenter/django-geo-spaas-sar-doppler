@@ -1,6 +1,8 @@
 ''' Processing of SAR Doppler from Norut's GSAR '''
 from django.core.management.base import BaseCommand
 
+from nansat.exceptions import NansatGeolocationError
+
 from sar_doppler.models import Dataset
 
 class Command(BaseCommand):
@@ -21,7 +23,8 @@ class Command(BaseCommand):
             uri = ds.dataseturi_set.get(uri__endswith='.gsar').uri
             try:
                 updated_ds, corrupted = Dataset.objects.process(uri)
-            except IOError: # file manually moved to *.error...
+            except (ValueError, IOError, NansatGeolocationError):
+                # some files manually moved to *.error...
                 continue
             if not corrupted:
                 self.stdout.write('Successfully processed (%d/%d): %s\n' % (i+1, num_unprocessed,
