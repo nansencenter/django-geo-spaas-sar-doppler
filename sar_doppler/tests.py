@@ -1,6 +1,7 @@
 from django.test import TestCase
 
 from management.commands.ingest_sar_doppler import Command as IngestCommand
+from management.commands.base_sar_doppler import Command as SARBaseCommand
 from managers import DatasetManager, gsar, Doppler
 from models import Dataset as SARDAtaset
 from django.core.management.base import CommandError
@@ -178,7 +179,6 @@ class TestDatasetManager(TestCase):
         self.assertEqual(test_ppath, expected_ppath)
 
 
-
 class TestIngestCommand(TestCase):
 
     fixtures = ["vocabularies"]
@@ -287,3 +287,14 @@ class TestIngestCommand(TestCase):
         test_out1 = IngestCommand.parse_date(timestamp1)
         self.assertIsInstance(test_out1, datetime)
         self.assertEqual(test_out1, datetime(2010, 1, 1))
+
+
+class TestBaseCommand(TestCase):
+    fixtures = ["vocabularies", "data"]
+
+    def test_file_in_db(self):
+        res1 = SARBaseCommand.file_in_db('/test/path/to/file/test.gsar')
+        self.assertIsInstance(res1, bool)
+        self.assertTrue(res1)
+        res2 = SARBaseCommand.file_in_db('/uri/is/not/in/db/test.gsar')
+        self.assertFalse(res2)

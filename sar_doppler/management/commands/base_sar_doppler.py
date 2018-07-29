@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand, CommandError
+from geospaas.catalog.models import DatasetURI
 from datetime import datetime
 
 
@@ -116,3 +117,10 @@ class Command(BaseCommand):
     @staticmethod
     def parse_date(timestamp):
         return datetime.strptime(timestamp, '%Y-%m-%d')
+
+    @staticmethod
+    def file_in_db(uri):
+        if DatasetURI.objects.filter(uri=uri):
+            return True
+        else:
+            return False
