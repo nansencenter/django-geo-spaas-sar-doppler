@@ -32,6 +32,11 @@ class Command(BaseCommand):
         for non_ingested_uri in uris_from_args(options['gsar_files']):
             print('Processed: %s / %s' % (uri_id, uris_num))
             self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
+
+            if Command.file_in_db(non_ingested_uri):
+                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+                continue
+
             try:
                 ds, cr = Dataset.objects.get_or_create(non_ingested_uri, srs, extent, **options)
             except Exception as ex:
@@ -48,11 +53,8 @@ class Command(BaseCommand):
             elif cr:
                 self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
             else:
-                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
                 if not type(ds) == catalogDataset:
                     self.stdout.write('Not found: %s\n' % non_ingested_uri)
                 elif cr:
                     self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
-                else:
-                    self.stdout.write('Was already added: %s\n' % non_ingested_uri)
             uri_id += 1

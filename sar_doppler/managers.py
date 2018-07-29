@@ -40,8 +40,6 @@ class DatasetManager(models.Manager):
                 return None, True
 
         ds, cr = NansatIngestorManager().get_or_create(uri, *args, **kwargs)
-        if not type(ds) == Dataset:
-            return ds, False
 
         # ingest file to sar_doppler db
         ds, created = super(DatasetManager, self).get_or_create(
