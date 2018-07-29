@@ -64,6 +64,11 @@ class Command(BaseCommand):
                             default='2093-03-11',
                             help='Specify end of a time range')
 
+        # Force processing
+        parser.add_argument('--force',
+                            action='store_true',
+                            help='Force processing ')
+
         return parser
 
     @staticmethod
