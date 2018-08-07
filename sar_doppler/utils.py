@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.contrib.gis.geos import WKTReader
 from django.core.management import call_command
 
-from geospaas.utils import nansat_filename, media_path, product_path
+from geospaas.utils import nansat_filename, module_path, product_path
 from geospaas.catalog.models import Dataset, DatasetURI
 
 # Start as script
@@ -528,4 +528,6 @@ def mean_gc_geostrophic(datetime_start=timezone.datetime(2010,1,1,
     #plt.colorbar()
     #plt.show()
     ##plt.savefig('/vagrant/shared/globcurrent_mean_geostrophic_u.png')
-    
+
+def parse_date(timestamp):
+    return datetime.strptime(timestamp, '%Y-%m-%d')

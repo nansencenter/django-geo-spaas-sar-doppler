@@ -2,13 +2,12 @@ import os, warnings
 from django.contrib.gis.geos import WKTReader
 from django.db import models
 
-from geospaas.utils import nansat_filename, media_path, product_path
+from geospaas.utils.utils import nansat_filename, product_path
 from geospaas.catalog.models import Dataset, DatasetURI
 from geospaas.nansat_ingestor.managers import DatasetManager as NansatIngestorManager
 
 from nansat import Nansat, Domain
 from sardoppler.gsar import gsar
-from sardoppler.sardoppler import Doppler
 from datetime import datetime
 
 
@@ -17,7 +16,7 @@ class DatasetManager(models.Manager):
     NUM_SUBSWATS = 5
     NUM_BORDER_POINTS = 10
 
-    def get_or_create(self, uri, srs, extent_dict, *args, **kwargs):
+    def get_or_create(self, uri, geometry, *args, **kwargs):
         filename = nansat_filename(uri)
 
         # Check time
@@ -25,17 +24,11 @@ class DatasetManager(models.Manager):
         if time_coverage > kwargs['end'] or time_coverage < kwargs['start']:
             return None, True
 
-        # Assemble domain
-        spec_domain = False
-        if srs and extent_dict:
-            extent_str = DatasetManager.assemble_domain_extent(extent_dict)
-            dom = Domain(srs, extent_str)
-            spec_domain = True
 
         image_geometry = DatasetManager.unite_geometry(filename, self.NUM_SUBSWATS)
 
-        if spec_domain:
-            intersection = DatasetManager.check_intersection(dom, image_geometry)
+        if geometry:
+            intersection = DatasetManager.check_intersection(geometry, image_geometry)
             if not intersection:
                 return None, True
 
