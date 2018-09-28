@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.db import models
 from django.contrib.gis.geos import WKTReader
 
-from geospaas.utils import nansat_filename, media_path, product_path
+from geospaas.utils.utils import nansat_filename, media_path, product_path
 from geospaas.vocabularies.models import Parameter
 from geospaas.catalog.models import DatasetParameter, GeographicLocation
 from geospaas.catalog.models import Dataset, DatasetURI
@@ -166,7 +166,7 @@ class DatasetManager(DM):
             })
 
             # Get band number of DC freq, then DC polarisation
-            band_number = swath_data[i]._get_band_number({
+            band_number = swath_data[i].get_band_number({
                 'standard_name': 'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
                 })
             pol = swath_data[i].get_metadata(bandID=band_number, key='polarization')

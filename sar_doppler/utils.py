@@ -33,7 +33,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
         platform='ENVISAT'):
 
     dop2correct = Doppler(dopplerFile)
-    bandnum = dop2correct._get_band_number({
+    bandnum = dop2correct.get_band_number({
         'standard_name':
             'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave'
     })
@@ -81,10 +81,10 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
     valid = np.array([])
     for ff in swath_files:
         n = Nansat(ff)
-        view_bandnum = n._get_band_number({
+        view_bandnum = n.get_band_number({
             'standard_name': 'sensor_view_angle'
         })
-        std_bandnum = n._get_band_number({
+        std_bandnum = n.get_band_number({
             'standard_name': \
                 'standard_deviation_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
         })
@@ -326,7 +326,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
     # Export to new netcdf with fdg as the only band
     expFile = os.path.join(ppath, ncfilename)
     print 'Exporting file: %s\n\n' %expFile
-    dop2correct.export(expFile, bands=[dop2correct._get_band_number(band_name)])
+    dop2correct.export(expFile, bands=[dop2correct.get_band_number(band_name)])
     ncuri = os.path.join('file://localhost', expFile)
     new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
             dataset=DS)
