@@ -37,7 +37,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
         'standard_name':
             'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave'
     })
-    polarization = dop2correct.get_metadata(bandID=bandnum, key='polarization')
+    polarization = dop2correct.get_metadata(band_id=bandnum, key='polarization')
     lon,lat = dop2correct.get_geolocation_grids()
     indmidaz = lat.shape[0]/2
     indmidra = lat.shape[1]/2
@@ -88,7 +88,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
             'standard_name': \
                 'standard_deviation_of_surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
         })
-        pol = n.get_metadata(bandID=std_bandnum, key='polarization')
+        pol = n.get_metadata(band_id=std_bandnum, key='polarization')
 
         # For checking when antenna pattern changes
         if valid.shape==(0,):
@@ -336,7 +336,7 @@ def update_geophysical_doppler(dopplerFile, t0, t1, swath, sensor='ASAR',
     dom = Domain(NSR(3857),
             '-lle %f %f %f %f -tr 1000 1000' % (
                 xlon.min(), xlat.min(), xlon.max(), xlat.max()))
-    dop2correct.reproject(dom, eResampleAlg=1, tps=True)
+    dop2correct.reproject(dom, resample_alg=1, tps=True)
 
     # Update figure
     dop2correct.write_figure(os.path.join(mp, pngfilename),

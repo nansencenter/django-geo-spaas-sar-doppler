@@ -169,7 +169,7 @@ class DatasetManager(DM):
             band_number = swath_data[i].get_band_number({
                 'standard_name': 'surface_backwards_doppler_centroid_frequency_shift_of_radar_wave',
                 })
-            pol = swath_data[i].get_metadata(bandID=band_number, key='polarization')
+            pol = swath_data[i].get_metadata(band_id=band_number, key='polarization')
 
             # Calculate total geophysical Doppler shift
             fdg = swath_data[i].geophysical_doppler_shift()
@@ -200,7 +200,7 @@ class DatasetManager(DM):
             d = Domain(NSR(3857),
                        '-lle %f %f %f %f -tr 1000 1000'
                        % (xlon.min(), xlat.min(), xlon.max(), xlat.max()))
-            swath_data[i].reproject(d, eResampleAlg=1, tps=True)
+            swath_data[i].reproject(d, resample_alg=1, tps=True)
 
             # Check if the reprojection failed
             try:
