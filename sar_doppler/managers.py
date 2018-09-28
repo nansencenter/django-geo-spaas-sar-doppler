@@ -191,7 +191,8 @@ class DatasetManager(DM):
             swath_data[i].export(filename=fn)
 
             # Add netcdf uri to DatasetURIs
-            ncuri = os.path.join('file://localhost', fn)
+            ncuri = 'file://localhost' + fn
+            #sjekk ncuri og ds
             new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
                                                                 dataset=ds)
 
