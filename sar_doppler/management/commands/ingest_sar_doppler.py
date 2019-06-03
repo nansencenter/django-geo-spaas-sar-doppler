@@ -5,7 +5,7 @@ from nansat.exceptions import NansatGeolocationError
 
 from django.core.management.base import BaseCommand
 
-from geospaas.utils import uris_from_args
+from geospaas.utils.utils import uris_from_args
 from geospaas.catalog.models import DatasetURI
 from geospaas.catalog.models import Dataset as catalogDataset
 
@@ -25,27 +25,24 @@ class Command(BaseCommand):
                 help='Force reprocessing')
 
     def handle(self, *args, **options):
-        #if not len(args)==1:
-        #    raise IOError('Please provide one filename only')
 
-        for non_ingested_uri in uris_from_args(options['gsar_files']):
-            self.stdout.write('Ingesting %s ...\n' % non_ingested_uri)
+        for uri in uris_from_args(options['gsar_files']):
+            self.stdout.write('Ingesting %s ...\n' % uri)
             try:
-                ds, cr = Dataset.objects.get_or_create(non_ingested_uri, **options)
+                ds, cr = Dataset.objects.get_or_create(uri, **options)
             except NansatGeolocationError:
                 continue
             if not type(ds)==catalogDataset:
-                self.stdout.write('Not found: %s\n' % non_ingested_uri)
+                self.stdout.write('Not found: %s\n' % uri)
             elif cr:
-                self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
+                self.stdout.write('Successfully added: %s\n' % uri)
             else:
-                self.stdout.write('Was already added: %s\n' % non_ingested_uri)
                 if not type(ds) == catalogDataset:
-                    self.stdout.write('Not found: %s\n' % non_ingested_uri)
+                    self.stdout.write('Not found: %s\n' % uri)
                 elif cr:
-                    self.stdout.write('Successfully added: %s\n' % non_ingested_uri)
+                    self.stdout.write('Successfully added: %s\n' % uri)
                 else:
-                    self.stdout.write('Was already added: %s\n' % non_ingested_uri)
+                    self.stdout.write('Was already added: %s\n' % uri)
 
 
 

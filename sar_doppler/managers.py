@@ -149,14 +149,14 @@ class DatasetManager(DM):
         ppath = product_path(module, swath_data[i].filename)
 
         # Loop subswaths, process each of them and create figures for display with leaflet
+        processed = True
         for i in range(self.N_SUBSWATHS):
-            is_corrupted = False
             # Check if the file is corrupted
             try:
                 inci = swath_data[i]['incidence_angle']
             #  TODO: What kind of exception ?
             except:
-                is_corrupted = True
+                processed = False
                 continue
 
             # Add Doppler anomaly
@@ -207,7 +207,7 @@ class DatasetManager(DM):
             try:
                 inci = swath_data[i]['incidence_angle']
             except:
-                is_corrupted = True
+                processed = False
                 warnings.warn('Could not read incidence angles - reprojection failed')
                 continue
 
@@ -262,7 +262,7 @@ class DatasetManager(DM):
 
         # TODO: consider merged figures like Jeong-Won has added in the development branch
 
-        return ds, not is_corrupted
+        return ds, processed
 
     #def bayesian_wind(self):
     #    # Find matching NCEP forecast wind field
