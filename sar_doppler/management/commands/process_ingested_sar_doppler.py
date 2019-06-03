@@ -1,9 +1,12 @@
 ''' Processing of SAR Doppler from Norut's GSAR '''
+import logging
 from django.core.management.base import BaseCommand
 
 from nansat.exceptions import NansatGeolocationError
 
 from sar_doppler.models import Dataset
+
+logging.basicConfig(filename='process_ingested_sar_doppler.log', level=logging.INFO)
 
 class Command(BaseCommand):
     help = 'Post-processing of ingested GSAR RVL files and generation of png images for ' \
@@ -36,6 +39,9 @@ class Command(BaseCommand):
                 self.stdout.write('Successfully processed (%d/%d): %s\n' % (i+1, num_unprocessed,
                     uri))
             else:
-                self.stdout.write('Corrupt file (%d/%d, may have been partly processed): %s\n' %(i+1,
-                    num_unprocessed, uri))
+                # should also be logged
+                msg = 'Corrupt file (%d/%d, may have been partly processed): %s\n' %(i+1,
+                    num_unprocessed, uri)
+                logging.info(msg)
+                self.stdout.write(msg)
 
