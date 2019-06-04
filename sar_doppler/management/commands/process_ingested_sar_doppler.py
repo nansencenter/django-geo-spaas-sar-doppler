@@ -39,7 +39,6 @@ class Command(BaseCommand):
                 self.stdout.write('Successfully processed (%d/%d): %s\n' % (i+1, num_unprocessed,
                     uri))
             else:
-                # should also be logged
                 msg = 'Corrupt file (%d/%d, may have been partly processed): %s\n' %(i+1,
                     num_unprocessed, uri)
                 logging.info(msg)
