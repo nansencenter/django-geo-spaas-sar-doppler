@@ -4,6 +4,7 @@ from optparse import make_option
 
 from nansat.exceptions import NansatGeolocationError
 
+from django.core.exceptions import MultipleObjectsReturned
 from django.db.utils import IntegrityError
 from django.core.management.base import BaseCommand
 
@@ -33,8 +34,8 @@ class Command(BaseCommand):
             self.stdout.write('Ingesting %s ...\n' % uri)
             try:
                 ds, cr = Dataset.objects.get_or_create(uri, **options)
-            except (NansatGeolocationError, IntegrityError) as e:
-                logging.exception(repr(e))
+            except (MultipleObjectsReturned, NansatGeolocationError, IntegrityError) as e:
+                logging.exception(uri+': '+repr(e))
                 continue
             if not type(ds)==catalogDataset:
                 self.stdout.write('Not found: %s\n' % uri)
