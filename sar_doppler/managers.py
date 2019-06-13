@@ -45,6 +45,15 @@ class DatasetManager(DM):
 
         fn = nansat_filename(uri)
         n = Nansat(fn, subswath=0)
+        if created:
+            from sar_doppler.models import SARDopplerExtraMetadata
+            # Store the polarization and associate the dataset
+            extra, _ = SARDopplerExtraMetadata.objects.get_or_create(dataset=ds,
+                    metadata_field=n.get_metadata('polarization'))
+            if not _:
+                raise ValueError('Created new dataset but could not create instance of ExtraMetadata')
+            ds.sardopplerextrametadata_set.add(extra)
+
         gg = WKTReader().read(n.get_border_wkt())
 
         if ds.geographic_location.geometry.area>gg.area:
