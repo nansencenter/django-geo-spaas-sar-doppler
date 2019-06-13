@@ -13,7 +13,7 @@ def add_polarization(apps, schema_editor):
     extra_model = apps.get_model('sar_doppler', 'sardopplerextrametadata')
     for ds in ds_model.objects.filter(dataseturi__uri__endswith='.gsar'):
         if ds.sardopplerextrametadata_set.all():
-            # This should not happen except during development and testing of the migration
+            # This should only happen if the migration is interrupted
             # No point in adding polarization if it was already added...
             continue
         n = Nansat(nansat_filename(ds.dataseturi_set.get(uri__endswith='.gsar').uri))
