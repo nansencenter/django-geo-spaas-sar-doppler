@@ -16,7 +16,13 @@ def add_polarization(apps, schema_editor):
             # This should only happen if the migration is interrupted
             # No point in adding polarization if it was already added...
             continue
-        n = Nansat(nansat_filename(ds.dataseturi_set.get(uri__endswith='.gsar').uri))
+        fn = nansat_filename(ds.dataseturi_set.get(uri__endswith='.gsar').uri)
+        if not os.path.isfile(fn):
+            # a missing file will break the migration
+            # remove the dataset in case the file doesn't exist
+            ds.delete()
+            continue
+        n = Nansat(fn)
         # Store the polarization and associate the dataset
         extra = extra_model(dataset=ds,
                     polarization=n.get_metadata('polarization'))
