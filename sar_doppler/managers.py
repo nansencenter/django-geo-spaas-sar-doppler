@@ -140,6 +140,32 @@ class DatasetManager(DM):
         
         return ds, created
 
+    def module_name(self):
+        """ Get module name
+        """
+        return self.__module__.split('.')[0]
+
+    def export2netcdf(self, n, ds):
+
+        i = n.get_metadata('subswath')
+
+        # Set filename of exported netcdf
+        fn = os.path.join(product_path(self.module_name(), n.filename),
+                            os.path.basename(n.filename).split('.')[0]
+                            + 'subswath%s.nc' % i)
+        # Set filename of original gsar file in metadata
+        n.set_metadata(key='Originating file',
+                                        value=n.filename)
+        # Export data to netcdf
+        print('Exporting %s (subswath %s)' % (n.filename, i))
+        n.export(filename=fn)
+
+        # Add netcdf uri to DatasetURIs
+        ncuri = 'file://localhost' + fn
+        #sjekk ncuri og ds
+        new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
+                                                            dataset=ds)
+
     def process(self, uri, *args, **kwargs):
         """ Create data products
         """
@@ -150,12 +176,10 @@ class DatasetManager(DM):
         for i in range(self.N_SUBSWATHS):
             swath_data[i] = Doppler(fn, subswath=i)
 
-        # Get module name
-        module = self.__module__.split('.')[0]
         # Set media path (where images will be stored)
-        mp = media_path(module, swath_data[i].filename)
+        mp = media_path(self.module_name(), swath_data[i].filename)
         # Set product path (where netcdf products will be stored)
-        ppath = product_path(module, swath_data[i].filename)
+        ppath = product_path(self.module_name(), swath_data[i].filename)
 
         # Loop subswaths, process each of them and create figures for display with leaflet
         processed = True
@@ -188,22 +212,7 @@ class DatasetManager(DM):
                     'wkv': 'surface_backwards_doppler_frequency_shift_of_radar_wave_due_to_surface_velocity'
                 })
 
-            # Set filename of exported netcdf
-            fn = os.path.join(ppath,
-                              os.path.basename(swath_data[i].filename).split('.')[0]
-                              + 'subswath%d.nc' % i)
-            # Set filename of original gsar file in metadata
-            swath_data[i].set_metadata(key='Originating file',
-                                        value=swath_data[i].filename)
-            # Export data to netcdf
-            print('Exporting %s (subswath %d)' % (swath_data[i].filename, i))
-            swath_data[i].export(filename=fn)
-
-            # Add netcdf uri to DatasetURIs
-            ncuri = 'file://localhost' + fn
-            #sjekk ncuri og ds
-            new_uri, created = DatasetURI.objects.get_or_create(uri=ncuri,
-                                                                dataset=ds)
+            self.export2netcdf(swath_data[i], ds)
 
             # Reproject to leaflet projection
             xlon, xlat = swath_data[i].get_corners()
